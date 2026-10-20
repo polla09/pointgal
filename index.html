@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#3b6cff">
+<title>포인트갤</title>
+<style>
+:root{--bg:#f2f4f8;--card:#fff;--tx:#1b2333;--sub:#6b7488;--pri:#3b6cff;--pri2:#e8eeff;--ok:#16a34a;--bd:#e5e9f2;--red:#e5484d;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#10141c;--card:#1a2030;--tx:#eef1f8;--sub:#98a2b8;--pri:#6b93ff;--pri2:#22304f;--ok:#4ade80;--bd:#2a3248;--red:#ff6369;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;padding-bottom:72px;max-width:520px;margin:0 auto}
+main{padding:12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px;margin-bottom:10px}
+h2{font-size:17px;margin:4px 0 10px}
+.hero{background:linear-gradient(135deg,var(--pri),#7c5cff);color:#fff;border:0}
+.big{font-size:30px;font-weight:800}
+.sub{color:var(--sub);font-size:12px}
+.hero .sub{color:#dfe6ff}
+button{font:inherit;border:0;border-radius:10px;padding:9px 13px;background:var(--pri);color:#fff;font-weight:700;cursor:pointer}
+button.g{background:var(--pri2);color:var(--pri)}
+button.r{background:var(--red)}
+button.s{padding:5px 9px;font-size:13px}
+button:disabled{opacity:.45}
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.item{padding:9px 0;border-bottom:1px solid var(--bd)}
+.item:last-child{border:0}
+.pi{cursor:pointer}
+input,textarea,select{width:100%;font:inherit;padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);margin-bottom:8px}
+nav{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:0 auto;background:var(--card);border-top:1px solid var(--bd);display:flex;padding-bottom:env(safe-area-inset-bottom,0px)}
+nav div{flex:1;text-align:center;padding:8px 0 6px;font-size:10px;color:var(--sub);cursor:pointer}
+nav div b{display:block;font-size:18px}
+nav div.on{color:var(--pri);font-weight:700}
+.chips span{display:inline-block;padding:6px 12px;border-radius:99px;background:var(--pri2);color:var(--pri);font-size:13px;margin:0 6px 8px 0;cursor:pointer}
+.chips span.on{background:var(--pri);color:#fff}
+.tg{display:inline-block;font-size:11px;padding:1px 7px;border-radius:99px;background:var(--pri2);color:var(--pri);margin-right:4px}
+.tg.n{background:var(--red);color:#fff}
+.tg.m{background:#fde68a;color:#7a5600}
+.cm{font-size:13px;padding:3px 0;color:var(--sub)}
+.rk{display:inline-block;min-width:26px;font-weight:800;color:var(--pri)}
+.pt{color:var(--ok);font-weight:700}
+#toast{position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:99px;font-size:14px;opacity:0;transition:.3s;pointer-events:none;z-index:9;max-width:90%;text-align:center}
+#toast.show{opacity:1}
+#modal{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;z-index:8;padding:20px}
+#modal .card{width:100%;max-width:400px}
+#modal button{width:100%;margin-top:8px}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+<div id="modal"><div class="card" id="mbox"></div></div>
+<main id="app"></main>
+<nav id="nav"></nav>
+<script>
+const U='https://pjhejxutxyyisoelbnyr.supabase.co';
+const K='sb_publishable_LlJhKiXe2YJFfOPIIZbJ-g_i5ZKHkjI';
+// 서버 함수 이름 (Supabase Edge Functions 목록의 영어 이름)
+const FN={post:'bright-action',react:'bright-responder',checkin:'hyper-handler',shop:'rapid-handler',signup:'super-handler',admin:'dynamic-service'};
+
+let S=null,me=null,tab='board',cb='',per=1,srt='likes',vid=null,boards=[];
+const viewed={};
+try{S=JSON.parse(localStorage.getItem('pg_s'))}catch(x){}
+const $=id=>document.getElementById(id);
+const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const toast=t=>{const x=$('toast');x.textContent=t;x.className='show';setTimeout(()=>x.className='',2000)};
+const modal=h=>{$('mbox').innerHTML=h;$('modal').style.display='flex'};
+const cl=()=>{$('modal').style.display='none'};
+const kst=()=>new Date(Date.now()+9*36e5).toISOString().slice(0,10);
+const bname=id=>(boards.find(b=>b.id==id)||{}).name||'';
+function ago(d){const m=Math.floor((Date.now()-new Date(d))/6e4);return m<60?Math.max(m,1)+'분 전':m<1440?Math.floor(m/60)+'시간 전':Math.floor(m/1440)+'일 전'}
+function flag(c){return c&&c.length==2&&c!='XX'?String.fromCodePoint(...[...c.toUpperCase()].map(x=>127397+x.charCodeAt())):'🌐'}
+
+/* ---------- 서버 통신 ---------- */
+function setS(d){S={a:d.access_token,r:d.refresh_token,x:d.expires_at||Math.floor(Date.now()/1e3)+d.expires_in,u:d.user.id};try{localStorage.setItem('pg_s',JSON.stringify(S))}catch(x){}}
+function clr(){S=null;me=null;try{localStorage.removeItem('pg_s')}catch(x){}}
+async function tok(){if(!S)return null;if(Date.now()/1e3>S.x-60){const r=await fetch(U+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:K,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:S.r})});if(!r.ok){clr();return null}setS(await r.json())}return S.a}
+async function H(){const h={apikey:K,'Content-Type':'application/json'},t=await tok();if(t)h.Authorization='Bearer '+t;return h}
+async function rest(p){try{const r=await fetch(U+'/rest/v1/'+p,{headers:await H()});const j=await r.json();return Array.isArray(j)?j:[]}catch(x){return[]}}
+async function rpc(f,a){try{const r=await fetch(U+'/rest/v1/rpc/'+f,{method:'POST',headers:await H(),body:JSON.stringify(a)});const j=await r.json();return Array.isArray(j)?j:[]}catch(x){return[]}}
+async function fn(n,b){const r=await fetch(U+'/functions/v1/'+n,{method:'POST',headers:await H(),body:JSON.stringify(b)});let j={};try{j=await r.json()}catch(x){}if(!r.ok||j.error)throw new Error(j.error||'요청에 실패했어요');return j}
+async function act(n,b,ok){try{const j=await fn(n,b);if(ok)toast(ok);return j}catch(x){toast(x.message);return null}}
+async function loadMe(){me=null;if(!S)return;const r=await rest('profiles?select=nick,points,streak,last_checkin,is_admin&id=eq.'+S.u);me=r[0]||null}
+
+/* ---------- 화면 공통 ---------- */
+async function go(t,a){tab=t;if(a!==undefined)vid=a;await render();scrollTo(0,0)}
+function nav(){const t=[['board','📋','게시판'],['pop','🔥','인기'],['att','📅','출석'],['shop','🎁','상점'],['my','👤','MY']];if(me&&me.is_admin)t.push(['adm','👑','관리']);
+$('nav').innerHTML=t.map(x=>`<div class="${x[0]==tab||(tab=='view'&&x[0]=='board')?'on':''}" onclick="go('${x[0]}')"><b>${x[1]}</b>${x[2]}</div>`).join('')}
+async function render(){const f={board:vBoard,pop:vPop,view:vView,att:vAtt,shop:vShop,my:vMy,adm:vAdm}[tab];
+$('app').innerHTML='<div class="sub" style="padding:20px">불러오는 중...</div>';
+if(!boards.length)boards=await rest('boards?select=id,name&order=id');
+$('app').innerHTML=await f();nav()}
+const need=()=>`<div class="card">로그인이 필요해요<br><button style="margin-top:8px" onclick="go('my')">로그인 / 가입</button></div>`;
+function who(p){return p.is_notice?'👑 관리자':`${p.user_id?'<span class="tg m">회원</span>':''}${e(p.nick)} <span class="sub">${flag(p.country)} (${e(p.ip_masked)})</span>`}
+function row(p,rk){const b=p.is_notice?'<span class="tg n">공지</span>':`<span class="tg">${e(bname(p.board_id))}</span>`;
+return `<div class="item pi" onclick="go('view',${p.id})"><div>${rk?`<span class="rk">${rk}</span>`:''}${b}<b>${e(p.title)}</b> <span class="sub">[${p.comment_count}]</span></div><div class="sub" style="margin-top:3px">${who(p)} · 👁 ${p.views} · 👍 ${p.likes} · ${ago(p.created_at)}</div></div>`}
+
+/* ---------- 게시판 ---------- */
+async function vBoard(){
+const q='posts_public?select=id,board_id,user_id,nick,title,likes,views,comment_count,created_at,country,ip_masked,is_notice&order=is_notice.desc,created_at.desc&limit=40'+(cb?`&or=(board_id.eq.${cb},is_notice.eq.true)`:'');
+const l=await rest(q);
+const chips=`<div class="chips"><span class="${cb?'':'on'}" onclick="cb='';render()">전체</span>${boards.map(b=>`<span class="${cb==b.id?'on':''}" onclick="cb=${b.id};render()">${e(b.name)}</span>`).join('')}</div>`;
+const form=`<div class="card"><h2>✏️ 글쓰기</h2><select id="pb">${boards.map(b=>`<option value="${b.id}" ${cb==b.id?'selected':''}>${e(b.name)}</option>`).join('')}</select>${me?`<div class="sub" style="margin-bottom:8px">회원 ${e(me.nick)}로 작성 · 하루 3번 +3P</div>`:`<div class="row"><input id="pn" placeholder="닉네임(기본 ㅇㅇ)" maxlength="8"><input id="pp" type="password" placeholder="삭제용 비번"></div>`}<input id="pt" placeholder="제목" maxlength="100"><textarea id="px" rows="3" placeholder="내용"></textarea><button style="width:100%" onclick="doPost()">등록</button></div>`;
+return chips+form+`<div class="card">${l.map(p=>row(p)).join('')||'<div class="sub">글이 없어요</div>'}</div>`}
+async function doPost(){const t=$('pt').value.trim(),x=$('px').value.trim();if(!t||!x)return toast('제목과 내용을 입력하세요');
+const b={board_id:+$('pb').value,title:t,body:x};if(!me){b.nick=$('pn').value;b.pw=$('pp').value}
+const j=await act(FN.post,b);if(j){toast(j.reward?`등록 완료! +${j.reward}P`:'등록 완료!');await loadMe();render()}}
+
+/* ---------- 인기글 ---------- */
+async function vPop(){const l=await rpc('popular_posts',{days:per,sort:srt});
+return `<h2>🔥 인기글</h2><div class="chips">${[[1,'일간'],[7,'주간'],[30,'월간']].map(x=>`<span class="${per==x[0]?'on':''}" onclick="per=${x[0]};render()">${x[1]}</span>`).join('')}</div><div class="chips">${[['likes','추천순'],['views','조회순']].map(x=>`<span class="${srt==x[0]?'on':''}" onclick="srt='${x[0]}';render()">${x[1]}</span>`).join('')}</div><div class="card">${l.map((p,i)=>row(p,i+1)).join('')||'<div class="sub">해당 기간 글이 없어요</div>'}</div>`}
+
+/* ---------- 글 보기 ---------- */
+async function vView(){const [p]=await rest('posts_public?select=*&id=eq.'+vid);
+if(!p)return `<button class="g s" onclick="go('board')">← 목록</button><div class="card" style="margin-top:10px">없거나 숨겨진 글이에요</div>`;
+if(!viewed[vid]){viewed[vid]=1;fn(FN.react,{action:'view',post_id:vid}).catch(()=>{});p.views++}
+const cs=await rest('comments_public?select=*&post_id=eq.'+vid+'&order=created_at');
+return `<button class="g s" onclick="go('board')">← 목록</button><div class="card" style="margin-top:10px"><div>${p.is_notice?'<span class="tg n">공지</span>':`<span class="tg">${e(bname(p.board_id))}</span>`}<b>${e(p.title)}</b></div><div class="sub" style="margin:4px 0">${who(p)} · ${ago(p.created_at)} · 👁 ${p.views}</div><div style="margin:10px 0;white-space:pre-wrap">${e(p.body)}</div>${cs.map(c=>`<div class="cm">↳ ${who(c)}: ${e(c.body)}</div>`).join('')}<div class="row" style="margin-top:10px;flex-wrap:wrap"><span><button class="g s" onclick="like(${p.id})">👍 ${p.likes}</button> <button class="g s" onclick="cmt(${p.id})">댓글 ${cs.length}</button></span><span>${p.is_notice?'':`<button class="g s" onclick="rep(${p.id})">🚨신고</button> `}<button class="g s" onclick="delp(${p.id})">삭제</button></span></div></div>`}
+async function like(i){if(await act(FN.react,{action:'like',post_id:i},'추천했어요'))render()}
+async function rep(i){await act(FN.react,{action:'report',post_id:i},'신고가 접수되었어요')}
+async function cmt(i){const t=prompt('댓글을 입력하세요');if(!t||!t.trim())return;const j=await act(FN.react,{action:'comment',post_id:i,body:t,nick:'ㅇㅇ'});if(j){toast(j.reward?`댓글 등록 +${j.reward}P`:'댓글 등록');await loadMe();render()}}
+async function delp(i){let pw='';if(!me){pw=prompt('글 비밀번호')||''}else if(!confirm('삭제할까요?'))return;if(await act(FN.react,{action:'delete',post_id:i,pw},'삭제했어요'))go('board')}
+
+/* ---------- 출석 ---------- */
+async function vAtt(){if(!me)return need();const d=me.last_checkin==kst();
+return `<div class="card hero"><div class="sub">${e(me.nick)}님</div><div class="big">${me.points} P</div><div class="sub">🔥 연속 출석 ${me.streak}일</div></div><div class="card"><div class="row"><div><b>📅 출석체크</b><div class="sub">광고 시청 후 +1P · 7일 연속 +10P</div></div><button onclick="checkin()" ${d?'disabled':''}>${d?'완료':'출석하기'}</button></div></div>`}
+function checkin(){let t=3;modal(`<h2>📺 광고 시청 중</h2><div class="sub">광고가 끝나면 출석이 완료돼요</div><div class="big" id="cd" style="text-align:center">3</div>`);
+const iv=setInterval(async()=>{t--;const c=$('cd');if(c)c.textContent=t;if(t<=0){clearInterval(iv);cl();const j=await act(FN.checkin,{});if(j){toast(`+${j.reward}P (${j.streak}일 연속)`);await loadMe();render()}}},1000)}
+
+/* ---------- 상점 ---------- */
+async function vShop(){const it=await rest('items?select=id,name,cost&order=cost');let h='<h2>🎁 포인트 상점</h2>';
+if(me)h+=`<div class="sub" style="margin-bottom:8px">내 포인트: <b>${me.points}P</b></div>`;
+h+='<div class="card">'+(it.map(x=>`<div class="item row"><span>${e(x.name)}<div class="sub">${x.cost}P</div></span><button onclick="buy(${x.id})">교환</button></div>`).join('')||'<div class="sub">상품이 없어요</div>')+'<div class="sub" style="margin-top:8px">신청 후 관리자 승인 → 기프티콘 발송 · 가입 7일 후부터 하루 1번</div></div>';
+if(me){const r=await rest('reward_requests?select=cost,status,created_at,items(name)&order=created_at.desc&limit=10');
+h+='<div class="card"><h2>교환 내역</h2>'+(r.map(q=>`<div class="item row"><span>${e(q.items?q.items.name:'상품')}<div class="sub">${ago(q.created_at)}</div></span><span class="sub">${e(q.status)}</span></div>`).join('')||'<div class="sub">없음</div>')+'</div>'}
+return h}
+async function buy(id){if(!me)return go('my');if(!confirm('교환을 신청할까요?'))return;if(await act(FN.shop,{action:'buy',item_id:id},'교환 신청 완료!')){await loadMe();render()}}
+
+/* ---------- MY ---------- */
+async function login(id,pw){const r=await fetch(U+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:K,'Content-Type':'application/json'},body:JSON.stringify({email:id.toLowerCase()+'@pointgal.app',password:pw})});const d=await r.json();if(!r.ok)throw new Error('아이디 또는 비밀번호가 틀려요');setS(d)}
+async function doLogin(){try{await login($('li').value.trim(),$('lp').value);await loadMe();toast('로그인 완료');render()}catch(x){toast(x.message)}}
+async function doSignup(){if(!$('ag').checked)return toast('약관 동의가 필요해요');const id=$('si').value.trim().toLowerCase(),pw=$('sp').value;
+try{await fn(FN.signup,{id:id,password:pw,ref:$('sr').value.trim()});await login(id,pw);await loadMe();toast('가입 완료! +30P');render()}catch(x){toast(x.message)}}
+function logout(){clr();tab='board';render()}
+function terms(){modal(`<h2>이용약관·개인정보처리방침</h2><div class="sub" style="line-height:1.7;max-height:50vh;overflow:auto"><b>[수집 항목]</b> 아이디, 접속 IP·국가<br><b>[이용 목적]</b> 서비스 제공, 중복·부정 이용 및 분탕 방지<br><b>[보유 기간]</b> 탈퇴 시 파기 (부정 이용 기록은 법령 범위 내 보관)<br><b>[포인트]</b> 다중 계정·자동화 등 부정 획득이 확인되면 회수하고 이용을 제한할 수 있어요<br><b>[게시물]</b> 불법·욕설·도배 글은 삭제되고 IP가 차단될 수 있어요<br><br>※ 샘플 문구예요. 실제 운영 전 법률 검토가 필요해요.</div><button onclick="cl()">닫기</button>`)}
+async function vMy(){
+if(!me)return `<div class="card"><h2>로그인</h2><input id="li" placeholder="아이디"><input id="lp" type="password" placeholder="비밀번호"><button style="width:100%" onclick="doLogin()">로그인</button></div><div class="card"><h2>가입 (+30P)</h2><input id="si" placeholder="아이디 (영문 소문자·숫자·_ 4~16자)"><input id="sp" type="password" placeholder="비밀번호 (6자 이상)"><input id="sr" placeholder="친구 초대코드 (선택)"><div class="row" style="margin-bottom:8px"><label class="sub"><input type="checkbox" id="ag" style="width:auto;margin:0 6px 0 0">이용약관·개인정보 동의 (필수)</label><button class="g s" onclick="terms()">보기</button></div><button style="width:100%" onclick="doSignup()">가입하기</button><div class="sub" style="margin-top:8px">현재는 임시 가입이에요 (문자인증은 추후 추가)</div></div>`;
+const [lg,nt]=await Promise.all([rest('point_logs?select=amount,reason,created_at&order=created_at.desc&limit=15'),rest('notifications?select=body,created_at&order=created_at.desc&limit=10')]);
+return `<div class="card hero"><div class="row"><div><div class="sub">내 포인트</div><div class="big">${me.points} P</div></div><button class="g" onclick="logout()">로그아웃</button></div></div><div class="card"><h2>🤝 친구 초대</h2><div>내 초대코드: <b>${e(me.nick)}</b></div><div class="sub">친구가 가입할 때 입력하면 돼요</div></div><div class="card"><h2>🔔 알림</h2>${nt.map(n=>`<div class="item">${e(n.body)}<div class="sub">${ago(n.created_at)}</div></div>`).join('')||'<div class="sub">없음</div>'}</div><div class="card"><h2>포인트 내역</h2>${lg.map(h=>`<div class="item row"><span>${e(h.reason)}<div class="sub">${ago(h.created_at)}</div></span><span class="pt">${h.amount>0?'+':''}${h.amount}</span></div>`).join('')||'<div class="sub">없음</div>'}</div>`}
+
+/* ---------- 관리자 ---------- */
+async function adm(a,b,ok){const j=await act(FN.admin,Object.assign({action:a},b),ok);if(j){boards=[];render()}}
+async function rq(id,a){if(await act(FN.shop,{action:a,request_id:id},'처리했어요'))render()}
+async function vAdm(){if(!me||!me.is_admin)return '<div class="card">관리자만 볼 수 있어요</div>';
+let pq=[];try{pq=(await fn(FN.shop,{action:'pending'})).requests||[]}catch(x){}
+return `<h2>👑 관리자</h2>
+<div class="card"><b>🎁 교환 신청 (${pq.length})</b>${pq.map(q=>`<div class="item"><div>${e(q.profiles?q.profiles.nick:'')} · ${e(q.items?q.items.name:'')} <span class="sub">${q.cost}P</span></div><div style="margin-top:5px"><button class="s" onclick="rq(${q.id},'approve')">승인</button> <button class="r s" onclick="rq(${q.id},'reject')">거절·환불</button></div></div>`).join('')||'<div class="sub" style="margin-top:6px">대기 없음</div>'}</div>
+<div class="card"><b>📢 공지 쓰기</b><input id="nt" placeholder="공지 제목" style="margin-top:8px"><textarea id="nx" rows="3" placeholder="내용"></textarea><button style="width:100%" onclick="adm('notice',{title:$('nt').value,body:$('nx').value},'공지 등록')">공지 등록</button></div>
+<div class="card"><b>🗂 게시판</b><div class="row" style="margin:8px 0"><input id="bn" placeholder="새 게시판 이름" style="margin:0"><button onclick="adm('add_board',{name:$('bn').value},'게시판 생성')">만들기</button></div>${boards.map(b=>`<div class="item row"><span>${e(b.name)}</span><button class="r s" onclick="confirm('삭제할까요? 안의 글도 모두 삭제돼요')&&adm('del_board',{board_id:${b.id}},'삭제했어요')">삭제</button></div>`).join('')}</div>
+<div class="card"><b>🚫 IP 차단</b><input id="ip" placeholder="예: 45.88.12.9" style="margin-top:8px"><div class="row"><button class="r" style="flex:1" onclick="adm('ban_ip',{ip:$('ip').value.trim()},'차단했어요')">차단</button><button class="g" style="flex:1" onclick="adm('unban_ip',{ip:$('ip').value.trim()},'해제했어요')">해제</button></div></div>
+<div class="card"><b>👤 회원 정지</b><input id="un" placeholder="회원 아이디" style="margin-top:8px"><div class="row"><button class="r" style="flex:1" onclick="adm('ban_user',{nick:$('un').value},'정지했어요')">정지</button><button class="g" style="flex:1" onclick="adm('unban_user',{nick:$('un').value},'해제했어요')">해제</button></div></div>
+<div class="card"><b>♻️ 숨겨진 글 복구</b><div class="row" style="margin-top:8px"><input id="rp" placeholder="글 번호" inputmode="numeric" style="margin:0"><button onclick="adm('restore_post',{post_id:$('rp').value},'복구했어요')">복구</button></div></div>
+<div class="card"><b>⚙️ 설정 숫자 바꾸기</b><select id="sk" style="margin-top:8px"><option value="report_hide_threshold">신고 N번이면 글 숨김</option><option value="reward_min_days">교환 가능 가입 후 일수</option><option value="reward_daily_limit">하루 교환 횟수</option></select><div class="row"><input id="sv" placeholder="숫자" inputmode="numeric" style="margin:0"><button onclick="adm('set_setting',{key:$('sk').value,value:$('sv').value},'저장했어요')">저장</button></div></div>`}
+
+(async()=>{boards=await rest('boards?select=id,name&order=id');await loadMe();render()})();
+</script>
+</body>
+</html>
